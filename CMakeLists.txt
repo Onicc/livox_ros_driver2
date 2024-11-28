@@ -1,6 +1,6 @@
 # Copyright(c) 2020 livoxtech limited.
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.8)
 project(livox_ros_driver2)
 
 # Default to C99
@@ -32,7 +32,9 @@ add_definitions(-DBUILDING_ROS2)
 # find dependencies
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
+set(CMAKE_SUPPRESS_DEVELOPER_WARNINGS 1)
 find_package(PCL REQUIRED)
+set(CMAKE_SUPPRESS_DEVELOPER_WARNINGS 0)
 find_package(std_msgs REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
@@ -53,6 +55,14 @@ rosidl_generate_interfaces(${LIVOX_INTERFACES}
   DEPENDENCIES builtin_interfaces std_msgs
   LIBRARY_NAME ${PROJECT_NAME}
 )
+
+## make sure the livox_lidar_sdk_shared library is installed
+find_library(LIVOX_LIDAR_SDK_LIBRARY liblivox_lidar_sdk_shared.so /usr/local/lib REQUIRED)
+
+##
+find_path(LIVOX_LIDAR_SDK_INCLUDE_DIR
+  NAMES "livox_lidar_api.h" "livox_lidar_def.h"
+  REQUIRED)
 
 ## PCL library
 link_directories(${PCL_LIBRARY_DIRS})
@@ -80,6 +90,8 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/call_back/livox_lidar_callback.cpp
 )
 
+target_include_directories(${PROJECT_NAME} PRIVATE ${livox_sdk_INCLUDE_DIRS})
+
 # get include directories of custom msg headers
 rosidl_get_typesupport_target(cpp_typesupport_target
 ${LIVOX_INTERFACES} "rosidl_typesupport_cpp")
@@ -89,7 +101,7 @@ target_link_libraries(${PROJECT_NAME} "${cpp_typesupport_target}")
 target_include_directories(${PROJECT_NAME} PUBLIC
   ${PCL_INCLUDE_DIRS}
   ${APR_INCLUDE_DIRS}
-  ${livox_sdk2_INCLUDE_DIRS}
+  ${LIVOX_LIDAR_SDK_INCLUDE_DIR}
   ${LIVOX_INTERFACES_INCLUDE_DIRECTORIES}   # for custom msgs
   3rdparty
   src
@@ -97,7 +109,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 # link libraries
 target_link_libraries(${PROJECT_NAME}
-  ${livox_sdk2_LIBRARIES}
+  ${LIVOX_LIDAR_SDK_LIBRARY}
   ${LIVOX_INTERFACE_TARGET}   # for custom msgs
   ${PPT_LIBRARY}
   ${Boost_LIBRARY}
